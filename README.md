@@ -291,6 +291,54 @@ you can change it in the game (F1).
 The Boxes and Snap dots buttons in the editor change these settings too. The controller buttons
 follow the game's controller layout.
 
+## Placing a blueprint on uneven ground
+
+Whole blueprints can be aimed up to 50 metres from the player's eyes by default.
+`Build.PlacementRange` allows 50 to 100 metres. The limit applies to the aimed
+anchor; parts of a large blueprint can extend beyond it. Continue offers unfinished
+builds within 50 metres of their footprint. Normal hammer pieces keep their usual
+reach. Materials still come from your inventory and containers near you, using
+the separate `Build.ChestRange` setting. Ground preparation still requires the
+entire affected footprint to be loaded and active.
+
+Whole-blueprint placement offers five anchors on its lowest solid foundation layer:
+the bottom center and four corners. Q/E cycle between them (controller: D-pad
+left/right). A small yellow square marks the selected anchor. Aim near an existing
+piece's snap point to align that anchor to it.
+Hold Shift to position it freely without snapping.
+
+Page Up/Page Down, or Ctrl + mouse wheel, adjust height in 0.25 m steps, up to
+5 m above or below the aimed position. Ordinary wheel input still rotates.
+The build card displays the effective height offset, and changing blueprints
+resets it to zero. The height keys can be rebound in the Build settings.
+The lower offset is constrained by the editable terrain depth across the whole
+foundation. With Prepare ground on, the upper terrain limit also constrains it.
+If the entire foundation cannot fit within the terrain limits, placement is
+blocked. Lowering is unavailable when the terrain depth cannot be read.
+
+**Prepare ground** is optional and starts off. Toggle it with T while aiming
+(controller: D-pad up), or use **Prepare ground on placement** in the editor's
+right-hand material card. The build card shows the selected anchor and whether
+ground preparation is on. These keys can be rebound in the Build settings.
+
+When enabled, the yellow outline marks the rectangular footprint of the lowest
+foundation pieces, with a 1.5 m margin for the terrain grid. On a valid build click,
+the ground in that area is raised or lowered to the foundation's bottom height.
+The rectangle can include gaps between foundation pieces, such as a courtyard.
+The preview itself does not change the terrain. Roof overhangs do not enlarge
+the leveling area unless they are themselves part of the lowest layer.
+
+Ground preparation respects loaded outdoor terrain, wards, no-build areas, local
+terrain ownership and the game's height limit. The mod checks support with the
+proposed ground before applying it and checks it again after the terrain update.
+If no pieces are placed, the terrain height and smoothing data are restored.
+Once any pieces are built, their prepared ground is kept, including for a partial
+build. Continue uses that fixed site and does not level the area again.
+
+Terrain paint is preserved, and this feature adds no separate stone cost for
+leveling. Removing the completed building does not restore its former terrain.
+This implementation targets single-player.
+
 ## Gathering materials for travel
 
 Open a blueprint in the editor and press **Pull materials...** at the top of the

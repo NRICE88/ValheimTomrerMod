@@ -60,6 +60,7 @@ namespace ValheimTomrer.Editor.Ui
         private static LayoutElement _materialsSize;
         private static MaterialList _list;
         private static Button _pullButton;
+        private static TextMeshProUGUI _groundLabel;
 
         public static Button PullButton => _pullButton;
 
@@ -150,6 +151,7 @@ namespace ValheimTomrer.Editor.Ui
 
         public static void Tick()
         {
+            GroundLabel();
             if (_root == null || _document == null)
             {
                 return;
@@ -455,6 +457,14 @@ namespace ValheimTomrer.Editor.Ui
             var card = _cardPanel;
 
             _cardName = Line(card, 17f, UiTheme.Accent);
+            var ground = UiBuild.Button("PrepareGround", card, "", () =>
+            {
+                BuildConfig.PrepareGround.Value = !BuildConfig.PrepareGround.Value;
+                GroundLabel();
+                BlueprintInfoCard.RefreshSoon();
+            }, 34f);
+            _groundLabel = ground.GetComponentInChildren<TextMeshProUGUI>();
+            GroundLabel();
 
             var body = Row("Body", card, 8f);
             body.gameObject.AddComponent<LayoutElement>().minHeight = 46f;
@@ -474,6 +484,13 @@ namespace ValheimTomrer.Editor.Ui
             // No "Can build now" here: the blueprint stands nowhere in the world, so there is no
             // spot to plan at, and the card text above already counts the pieces.
             _list.FooterShown = false;
+        }
+
+        private static void GroundLabel()
+        {
+            if (_groundLabel == null) return;
+            var text = "Prepare ground: " + (BuildConfig.PrepareGround.Value ? "ON" : "OFF");
+            if (_groundLabel.text != text) _groundLabel.text = text;
         }
 
         private static Choice NewChoice(string prefab, string text, Sprite icon)

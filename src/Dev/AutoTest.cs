@@ -212,6 +212,9 @@ namespace ValheimTomrer.Dev
                 case "menu_scroll":
                     scenario = TestMenuScroll(player);
                     break;
+                case "foundation_terrain":
+                    scenario = TestFoundationTerrain(player);
+                    break;
                 case "build_sources":
                     scenario = TestBuildSources(player);
                     break;
@@ -383,6 +386,7 @@ namespace ValheimTomrer.Dev
                 case "probe_build": return ProbeBuild(player);
                 case "material_pull": return TestMaterialPull(player);
                 case "menu_scroll": return TestMenuScroll(player);
+                case "foundation_terrain": return TestFoundationTerrain(player);
                 case "build_sources": return TestBuildSources(player);
                 case "build_partial": return TestBuildPartial(player);
                 case "build_sites": return TestBuildSites(player);
@@ -447,6 +451,13 @@ namespace ValheimTomrer.Dev
             Default(EditorConfig.MenuScrollMultiplier);
             Default(EditorConfig.MenuRowsPerNotch);
             Default(BuildConfig.PullExcludedPrefabs);
+            Default(BuildConfig.PrepareGround);
+            Default(BuildConfig.PlacementRange);
+            Default(BuildConfig.RaiseHeightKey);
+            Default(BuildConfig.LowerHeightKey);
+            Default(BuildConfig.PreviousAnchorKey);
+            Default(BuildConfig.NextAnchorKey);
+            Default(BuildConfig.PrepareGroundKey);
             Default(BuildConfig.UseChests);
             Default(BuildConfig.ChestRange);
         }
@@ -3179,6 +3190,68 @@ namespace ValheimTomrer.Dev
         }
 
         // ---------- scenarios: menu_scroll / material_pull (throwaway test world only) ----------
+
+        private static IEnumerator TestFoundationTerrain(Player player)
+        {
+            yield return MoveToBuildSpot(player);
+            var visualFloor = new Bounds(new Vector3(0f, 0.5f, 0f), new Vector3(2f, 1f, 2f));
+            Check(BlueprintFoundation.FitsModel(visualFloor, visualFloor), "real foundation collision body is accepted");
+            Check(!BlueprintFoundation.FitsModel(new Bounds(new Vector3(0f, -75f, 0f), new Vector3(40f, 40f, 40f)), visualFloor),
+                "remote 40 m utility collider cannot become a foundation 95 m below its model");
+            var foundation = BlueprintFoundation.FromBoxes(new[]
+            {
+                new Bounds(new Vector3(-1f, 0.1f, -1f), new Vector3(2f, 0.2f, 2f)),
+                new Bounds(new Vector3(1f, 0.1f, 1f), new Vector3(2f, 0.2f, 2f)),
+                new Bounds(new Vector3(0f, 4f, 0f), new Vector3(20f, 1f, 20f)),
+            });
+            Check(foundation.Anchors.Length == 5 && foundation.Bounds.size.x == 4f
+                && foundation.Bounds.size.z == 4f && foundation.Anchors.All(a => Mathf.Abs(a.y) < 1e-4f),
+                "five bottom anchors follow the foundation, excluding the overhanging roof");
+            var turn = Quaternion.Euler(0f, 22.5f, 0f);
+            var center = player.transform.position + Vector3.forward * 6f;
+            center.y = ZoneSystem.instance.GetGroundHeight(center);
+            foreach (var anchor in foundation.Anchors)
+            {
+                var root = center - turn * anchor;
+                Check((root + turn * anchor - center).sqrMagnitude < 1e-5f,
+                    "rotated foundation anchor lands exactly on the target");
+            }
+            foreach (var offset in new[] { 0.4f, -0.4f })
+            {
+                var position = center + Vector3.up * offset;
+                Check(FoundationTerrain.TryHeightLimits(foundation, position, turn, out var minimum, out var maximum)
+                    && minimum < maximum, "editable height interval covers the whole rotated foundation");
+                Check(!FoundationTerrain.TryPlan(foundation, new Vector3(position.x, minimum - 0.02f, position.z), turn,
+                    out _, out _), "below the editable foundation depth is refused");
+                Check(!FoundationTerrain.TryPlan(foundation, new Vector3(position.x, maximum + 0.02f, position.z), turn,
+                    out _, out _), "above the editable foundation height is refused");
+                Check(FoundationTerrain.TryPlan(foundation, position, turn, out var terrain, out var error),
+                    "terrain plan is available: " + (error ?? "ok"));
+                if (error != null) yield break;
+                var map = Heightmap.FindHeightmap(center);
+                var compiler = map.GetAndCreateTerrainCompiler();
+                compiler.CheckLoad();
+                var levels = (float[])compiler.m_levelDelta.Clone();
+                var smooth = (float[])compiler.m_smoothDelta.Clone();
+                var flags = (bool[])compiler.m_modifiedHeight.Clone();
+                var paint = (Color[])compiler.m_paintMask.Clone();
+                var sampleBefore = ZoneSystem.instance.GetGroundHeight(center);
+                Check(terrain.Apply(out error), "terrain apply: " + (error ?? "ok"));
+                Check(Mathf.Abs(ZoneSystem.instance.GetGroundHeight(center) - terrain.Height) < 0.06f,
+                    "terrain is raised/lowered to the proposed foundation plane");
+                Check(compiler.m_paintMask.SequenceEqual(paint), "leveling leaves terrain paint unchanged");
+                Check(FoundationTerrain.TryHeightLimits(foundation, position, turn, out var minimumAfter, out var maximumAfter)
+                    && Mathf.Abs(minimum - minimumAfter) < 0.001f && Mathf.Abs(maximum - maximumAfter) < 0.001f,
+                    "existing terrain edits do not move the original editable depth or height limits");
+                terrain.Dispose();
+                Check(compiler.m_levelDelta.SequenceEqual(levels) && compiler.m_smoothDelta.SequenceEqual(smooth)
+                    && compiler.m_modifiedHeight.SequenceEqual(flags)
+                    && Mathf.Abs(ZoneSystem.instance.GetGroundHeight(center) - sampleBefore) < 0.01f,
+                    "disposing an uncommitted operation restores exact terrain data and height");
+            }
+            Check(!FoundationTerrain.TryPlan(foundation, center + Vector3.up * 100f, turn, out _, out _),
+                "an impossible height is refused without terrain edits");
+        }
 
         private static IEnumerator TestMenuScroll(Player player)
         {
@@ -6051,7 +6124,7 @@ namespace ValheimTomrer.Dev
             CheckOnScreen("the Workshop's list");
 
             var description = hud.m_pieceDescription.text;
-            Check(description.EndsWith($"{kit.Parts.Count} pieces.") && NoControls(description),
+            Check(description.Contains($"{kit.Parts.Count} pieces.") && NoControls(description),
                 $"the card counts the pieces and lists no controls (they are in the game's hint row): '{description.Replace("\n", " | ")}'");
             yield return CardPadHint(kit, false);
 
@@ -6602,7 +6675,8 @@ namespace ValheimTomrer.Dev
             UnityEngine.Object.Destroy(counter);
             var description = Hud.instance.m_pieceDescription.text;
             var count = $"{resolved.Parts.Count} pieces.";
-            Check(description == (string.IsNullOrEmpty(kit.Description) ? count : kit.Description + "\n" + count) && NoControls(description),
+            Check(description.StartsWith(string.IsNullOrEmpty(kit.Description) ? count : kit.Description + "\n" + count)
+                && description.Contains("Anchor: ") && description.Contains("Prepare ground: ") && NoControls(description),
                 $"the card keeps its own text and the piece count, no controls: '{description.Replace("\n", " | ")}'");
             yield return new WaitForSeconds(0.3f);
             yield return Screenshot("hints-blueprint-keys");
@@ -6831,6 +6905,10 @@ namespace ValheimTomrer.Dev
                         W("Next blueprint", K(ValheimTomrerPlugin.BlueprintKey.Value), G("JoyButtonX")),
                         edit,
                         menu,
+                        W("Anchor", Or(K(BuildConfig.PreviousAnchorKey.Value), K(BuildConfig.NextAnchorKey.Value)),
+                            Or(G("JoyDPadLeft"), G("JoyDPadRight"))),
+                        W("Ground", K(BuildConfig.PrepareGroundKey.Value), G("JoyDPadUp")),
+                        W("Height", Or(K(BuildConfig.RaiseHeightKey.Value), K(BuildConfig.LowerHeightKey.Value)), ""),
                         W("Rotate", "wheel", rotate),
                     };
                 case HintRow.Mode.Continue:

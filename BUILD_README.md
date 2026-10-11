@@ -15,7 +15,7 @@ Package (automatically rebuilds Release):
 
 Output:
 
-    dist/ValheimTomrer-0.1.0.zip
+    dist/ValheimTomrer-0.2.0.zip
 
 Both commands detect Steam installations, additional Steam libraries, and BepInEx
 in the game install or Gale/r2modman profiles. If there are several profiles,
@@ -35,7 +35,7 @@ Close Valheim and replace your installed Tomrer DLL manually, keeping only one c
 The package ZIP contains manifest.json, README.md, LICENSE, icon.png and
 plugins/ValheimTomrer.dll (plus CHANGELOG.md when supplied).
 
-VERSION matches the current upstream source: 0.1.0. To change it, update VERSION,
+The current fork release version is 0.2.0. To change it, update VERSION,
 the csproj Version and src/Plugin.cs PluginVersion together; package.sh writes
 the chosen version into its staged manifest without editing the upstream manifest.
 

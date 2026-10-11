@@ -1,6 +1,31 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
+
+### Foundation anchors and ground preparation
+
+- Fix misplaced previews caused by smoke/range utility colliders being treated
+  as foundation geometry. Measure placement bodies near the actual visible model.
+- Add a placement height offset of up to +/-5 metres in 0.25 m steps via
+  Page Up/Page Down or Ctrl + wheel, shown on the build card. Clamp to the
+  foundation's editable terrain depth and, when leveling, maximum height.
+- Preserve the original ghost model lifecycle and LOD setup. Keep Debug-level creation and
+  first-placement geometry/rendering diagnostics to diagnose missing previews.
+- Extend whole-blueprint aiming to 50 metres by default, configurable from 50 to
+  100 metres, including the third-person camera offset. Extend Continue to 50 metres.
+- Add bottom-center and four corner anchors measured from the blueprint's lowest
+  solid foundation layer. Q/E or controller D-pad left/right select an anchor.
+- Snap the selected whole-blueprint anchor to nearby built-piece snap points.
+- Add optional **Prepare ground on placement**, available in the editor and
+  toggled with T or controller D-pad up while aiming. It starts off.
+- Preview the lowest foundation's rotated rectangular footprint and its terrain
+  grid margin. Raise and lower that area on a valid build click.
+- Check proposed and applied support before construction, preserve terrain paint,
+  respect vanilla height limits and access rules, and restore the terrain data
+  when an operation fails before placing any pieces.
+- Keep prepared terrain once construction begins; partial-build Continue does
+  not repeat terrain preparation.
+- Add a Debug foundation/terrain regression scenario.
 
 ### Editor scrolling and camera
 
