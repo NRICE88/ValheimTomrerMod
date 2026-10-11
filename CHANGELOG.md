@@ -37,6 +37,10 @@
 
 ### Development and compatibility
 
+- Add optional Linux build and packaging helpers that detect Steam game assemblies
+  and BepInEx installations, including Gale/r2modman profiles. Build Debug locally or
+  create a Release package without automatically installing it.
+
 - Fix compilation with C# 14 by renaming the local `field` variable in
   `ModUi.Typing` to avoid the new property-accessor keyword.
 - Add Debug regression scenarios for material transfers, inventory capacity,
